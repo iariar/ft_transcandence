@@ -12,7 +12,7 @@ export class appController {
 	@Get('/:id')
 	async getDatabaseFilebyId(@Res({ passthrough: true }) response: Response, @Param('id', ParseIntPipe) id: number) {
 
-		// console.log('here');
+		// //console.log('here');
 		// const ret = await this.userservice.check_if_token_valid(token)
 		// if (ret.stats === true)
 		// {
@@ -23,7 +23,7 @@ export class appController {
 			'Content-Type': 'image'
 		})
 		return new StreamableFile(stream);
-		// console.log(response)
+		// //console.log(response)
 		// }
 		// return ({status:'no'});
 	}

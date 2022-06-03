@@ -9,14 +9,14 @@ import { HttpModule } from 'nestjs-http-promise'
 import AVatar from './user/entities/file.entity';
 import { AuthModule } from './Auth/auth.module';
 import { appController } from './app.controller';
-import { Convo } from './user/entities/conversation.entity';
-import { Message } from './user/entities/message.entity';
+import { Convo } from './chat/entities/conversation.entity';
+import { Message } from './chat/entities/message.entity';
 import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), TypeOrmModule.forRoot({
     type: 'postgres',
-    host: '10.11.100.14',
+    host: '10.11.100.17',
     port: 35000,
     username: 'user',
     password: 'password',

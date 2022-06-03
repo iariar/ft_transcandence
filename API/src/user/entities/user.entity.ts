@@ -2,7 +2,7 @@ import { OneToMany, ManyToOne, JoinTable, Entity, ManyToMany, PrimaryGeneratedCo
 import AVatar from './file.entity';
 import { Match } from './match.entity';
 import { UserStats } from './stats.entity';
-import { Convo } from './conversation.entity';
+import { Convo } from '../../chat/entities/conversation.entity';
 
 @Entity()
 export class UserEntity {
@@ -42,15 +42,15 @@ export class UserEntity {
 	@Column({ default: false })
 	isEmailConfirmed: boolean;
 
-	@ManyToMany(type => Convo, (convo) => convo.users)
-	@JoinTable({ joinColumn: {} })
+	@ManyToMany(type => Convo)
+	@JoinTable()
 	rooms: Convo[];
 
 	@ManyToMany(() => Convo, (album) => album.administrators)
 	convo_administrators: Convo[]
 
 
-	@OneToMany(() => Match, (history) => history.player1)
+	@ManyToMany(() => Match)
 	history: Match[]
 
 

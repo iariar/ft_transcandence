@@ -12,8 +12,8 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
 @Module({
-  imports: [JwtModule.register({}), TypeOrmModule.forFeature([UserEntity, UserStats, Match, AVatar]),UserModule],
+  imports: [JwtModule.register({}), TypeOrmModule.forFeature([UserEntity, UserStats, Match, AVatar]), UserModule],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
 })
-export class AuthModule {}
+export class AuthModule { }

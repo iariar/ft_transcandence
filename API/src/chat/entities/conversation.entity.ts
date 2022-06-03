@@ -1,15 +1,15 @@
 import { JoinTable, Entity, PrimaryGeneratedColumn, ManyToMany, OneToMany, Column, OneToOne, JoinColumn } from 'typeorm';
 import { Message } from './message.entity';
-import { UserEntity } from './user.entity'
+import { UserEntity } from '../../user/entities/user.entity'
 
 @Entity()
 export class Convo {
 	@PrimaryGeneratedColumn()
 	id: number;
 
-	// @OneToOne(() => UserEntity)
-	// @JoinColumn()
-	// owner: UserEntity
+	@ManyToMany(type => UserEntity)
+	@JoinTable()
+	owner: UserEntity[];
 
 	@Column({ default: false, nullable: true })
 	private: boolean
@@ -20,24 +20,24 @@ export class Convo {
 	@Column({ nullable: true })
 	password: string
 
-	@ManyToMany(() => UserEntity, (user) => user.id)
+	@ManyToMany(() => UserEntity)
 	@JoinTable()
 	administrators: UserEntity[];
 
-	@ManyToMany(() => UserEntity, (user) => user.id)
+	@ManyToMany(() => UserEntity)
 	@JoinTable()
 	users: UserEntity[];
 
-
-	@ManyToMany(type => UserEntity, (user) => user.id)
-	@JoinTable({ joinColumn: {} })
+	@ManyToMany(() => UserEntity)
+	@JoinTable()
 	banned: UserEntity[];
 
-	@ManyToMany(type => UserEntity)
-	@JoinTable({ joinColumn: {} })
+	@ManyToMany(() => UserEntity)
+	@JoinTable()
 	muted: UserEntity[];
 
-	@OneToMany(type => Message, (messages) => messages.convo)
+	@ManyToMany(() => Message)
+	@JoinTable()
 	messages: Message[];
 
 }

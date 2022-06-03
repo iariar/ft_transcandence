@@ -1,9 +1,8 @@
 import { Body, Controller, Get, Param, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
-import { map, Observable, of, retry, switchMap } from 'rxjs';
+// import { map, Observable, of, retry, switchMap } from 'rxjs';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { UserI } from './dto/user.interface';
-import { UserHelperService } from './user-helper/user-helper.service';
 import { UserService } from './user.service';
 import { GetUser } from './decorators/user.decorator'
 import { Profile } from 'passport';
@@ -23,22 +22,23 @@ import { Repository } from 'typeorm';
 import { join } from 'path';
 import { emailDto } from './dto/email.dto';
 import { usernameDto } from './dto/username.dto';
+import { tokenDto } from '../Auth/dto/token.dto';
 
 @UseGuards(My_guard)
 @Controller('users')
 export class UserController {
-	constructor(private userservice: UserService, private userHelper: UserHelperService,
+	constructor(private userservice: UserService,
 		@InjectRepository(UserEntity)
 		private readonly userRepository: Repository<UserEntity>,) { }
 
-	//////////////////////
-	/////////TWOFA////////
-	//////////////////////
+	//    ////////////////////
+	//   ///////TWOFA////////
+	//	////////////////////
 
-	@Get('sendEmail')
-	async sendEmail(@Body('email') email: string) {
-		await this.userservice.sendMail(email);
-		// console.log(email)
+	@Post('sendEmail')
+	async sendEmail(@Body() emaildto: emailDto) {
+		await this.userservice.sendMail(emaildto.email);
+		// //console.log(email)
 		return 'done'
 	}
 
@@ -48,33 +48,45 @@ export class UserController {
 	}
 
 	@Post('disableTwoFa')
-	disableTwoFa(@Body('email') email: string, @GetUser() user: any) {
+	disableTwoFa(@GetUser() user: any) {
 		return this.userservice.disableTwoFa(user.username);
 	}
 
 	@Post('sendVerification')
-	sendVerification(@Body('email') email: string, @GetUser() user: any) {
-		this.userservice.sendVerificationLink(email, user.username);
+	sendVerification(@Body() emaildto: emailDto, @GetUser() user: any) {
+		this.userservice.sendVerificationLink(emaildto.email, user.username);
 	}
 
-	@Post('confirm')
-	async confirm(@Body('token') token: string, @GetUser() user: any) {
-		const email = await this.userservice.decodeConfirmationToken(token);
-		return await this.userservice.confirmEmail(email);
+	@Get('twoFaInfo')
+	TwoFaInfo(@GetUser() user: any) {
+		const obj = {
+			TwoFa: user.twoFaActivated,
+			email: user.email,
+			emailConfirmed: user.isEmailConfirmed
+		}
+		// console.log(obj)
+		return (obj)
 	}
 
-	@Get('2fa')
-	async activateTwoFa(@GetUser() user: any, @Body('email') email: string) {
-		return await this.userservice.activateTwoFa(user.login, email)
+	@Post('logout')
+	async logout(@GetUser() user: any) {
+		// console.log(user)
+		user.isEmailConfirmed = false
+		await this.userRepository.save(user)
 	}
 
-	/////////////////////////
-	/////////USERNAME////////
-	/////////////////////////
+	// @Get('2fa')
+	// async activateTwoFa(@GetUser() user: any, @Body() emaildto: emailDto) {
+	// 	return await this.userservice.activateTwoFa(user.login, emaildto.email)
+	// }
+
+	//   ///////////////////////
+	//  ///////USERNAME////////
+	// ///////////////////////
 
 	@Post('username') //change username
 	async change_username(@GetUser() user: any, @Body() usernamedto: usernameDto) {
-		// console.log('|', usernamedto.username, "|")
+		// //console.log('|', usernamedto.username, "|")
 		if (usernamedto.username && usernamedto.username !== "")
 			return await this.userservice.add_username(user.login, usernamedto.username)
 		return ({ status: 'username empty' })
@@ -83,9 +95,9 @@ export class UserController {
 
 	@Get('username')//get username
 	async get_user_name(@GetUser() user: any) {
-		console.log(user)
+		//console.log(user)
 		// if (user.username) {
-		// console.log(user)
+		// //console.log(user)
 		return { username: user.username }
 		// }
 		// else
@@ -97,14 +109,37 @@ export class UserController {
 	/////////////////////////
 
 	@Post('friends')///add friend
-	async add_friend(@GetUser() user: any, @Body('username') username: string) {
-		return await this.userservice.add_friend(user.login, username)
+	async add_friend(@GetUser() user: any, @Body() usernamedto: usernameDto) {
+		return await this.userservice.add_friend(user.login, usernamedto.username)
 	}
 
 	@Get('friends')//get friends
 	async get_friends(@GetUser() user: any) {
 		return await this.userservice.get_friends(user.login)
 	}
+
+	@Post('block')//block user
+	async block_user(@GetUser() user: any, @Body() usernamedto: usernameDto) {
+		return await this.userservice.block_user(usernamedto.username, user.username)
+	}
+
+	@Post('unblock')//unblock user
+	async unblock_user(@GetUser() user: any, @Body() usernamedto: usernameDto) {
+		console.log(usernamedto)
+		return await this.userservice.unblock_user(usernamedto.username, user.username)
+	}
+
+	@Get('blockedUsers')
+	async blocked(@GetUser() user: any) {
+		return await this.userservice.blocked_list(user.username)
+	}
+
+	@Post('removeFriend')//remove friend
+	async removeFriend(@GetUser() user: any, @Body() usernamedto: usernameDto) {
+		return await this.userservice.removeFriend(usernamedto.username, user.username)
+	}
+
+
 	/////////////////////////
 	/////////AVATAR//////////
 	/////////////////////////
@@ -119,19 +154,25 @@ export class UserController {
 		})
 	}))
 	async uploadFile(@UploadedFile() file, @GetUser() user: any) {
-		// console.log('heeeeereeeee')
 		user.imagePath = file.path;
 		this.userRepository.save(user);
-		return of({ imagePath: file.path })
+		return ({ imagePath: file.path })
 	}
 
 	@Get('avatar')	//get avatar
 	get_image(@GetUser() user: any, @Res() res) {
-		return of(res.sendFile(join(process.cwd(), user.imagePath)))
+		return (res.sendFile(join(process.cwd(), user.imagePath)))
+	}
+
+	@Get('avatarUser/:username')	//get avatar
+	async get_image_user(@GetUser() user: any, @Res() res, @Param() usernamedto: usernameDto) {
+		const us = await this.userRepository.findOneBy({ username: usernamedto.username })
+		if (us)
+			return (res.sendFile(join(process.cwd(), us.imagePath)))
 	}
 
 	@Get('all')
-	async findAll(@Param('token') token: string) {
+	async findAll() {
 		return this.userservice.get_all_users()
 	}
 
@@ -152,7 +193,7 @@ export class UserController {
 
 	////GET USER BY USERNAME
 	@Get(':username')
-	async get_user_by_username(@GetUser() user: any, @Param('username') username: string) {
-		return await this.userservice.get_user_by_username(username)
+	async get_user_by_username(@GetUser() user: any, @Param() usernamedto: usernameDto) {
+		return await this.userservice.get_user_by_username(usernamedto.username)
 	}
 }
