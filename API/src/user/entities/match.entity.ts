@@ -10,8 +10,5 @@ export class Match {
 	won: boolean;
 
 	@Column()
-	player1: string;
-
-	@Column()
-	player2: string;
+	oppenent: string;
 }

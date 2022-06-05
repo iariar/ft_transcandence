@@ -12,6 +12,10 @@ import { createTransport } from 'nodemailer';
 import { OAuth2Client } from 'google-auth-library';
 import { ChatService } from 'src/chat/chat.service';
 import { Convo } from '../chat/entities/conversation.entity';
+import * as fs from 'fs';
+import { matchDto } from './dto/match.dto';
+import { Match } from './entities/match.entity';
+import { join } from 'path';
 
 
 
@@ -24,6 +28,8 @@ export class UserService {
 		private readonly userRepository: Repository<UserEntity>,
 		@InjectRepository(Convo)
 		private readonly convoRepository: Repository<Convo>,
+		@InjectRepository(Match)
+		private readonly matchRepository: Repository<Match>,
 		private jwt: JwtService,
 		private config: ConfigService,
 		@InjectRepository(AVatar)
@@ -473,17 +479,52 @@ export class UserService {
 		const user = this.userRepository.findOneBy({ username: userName })
 	}
 
-	async get_stats(Login: string) {
+	async get_stats(username: string) {
+		let ret: {
+			username: string,
+			image: any,
+			history: {}
+		}
 		const user = await this.userRepository.findOne({
 			where: {
-				login: Login
+				username: username
 			},
 			relations: {
-				userstats: true,
+				history: true,
 			},
 		})
+		ret.username = user.username
+		ret.history = user.history
+		ret.image = fs.readFileSync(join(process.cwd(), user.imagePath), { encoding: 'base64' })
 		return ({ stats: user.userstats })
 	}
 
+	async add_to_history(username: string, matchdto: matchDto) {
+		// match: Match = {
+		// 	winner: matchdto.winner,
+		// 	opponents: matchdto.oppenent
+		// }
+		try {
+			let match = await this.matchRepository.create()
+			match.won = matchdto.won;
+			match.oppenent = matchdto.oppenent
+			match = await this.matchRepository.save(match)
+			const user = await this.userRepository.findOne({
+				where: {
+					username: username,
+				},
+				relations: {
+					history: true
+				}
+			})
+			if (!user.history)
+				user.history = []
+			user.history.push(match)
+			return ({ stats: true })
+		}
+		catch {
+			return ({ stats: false })
+		}
+	}
 
 }

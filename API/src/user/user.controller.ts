@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 // import { map, Observable, of, retry, switchMap } from 'rxjs';
 import { CreateUserDto } from './dto/create-user.dto';
-import { LoginUserDto } from './dto/login-user.dto';
+import { matchDto } from './dto/match.dto';
 import { UserI } from './dto/user.interface';
 import { UserService } from './user.service';
 import { GetUser } from './decorators/user.decorator'
@@ -70,7 +70,6 @@ export class UserController {
 
 	@Post('logout')
 	async logout(@GetUser() user: any) {
-		// console.log(user)
 		user.isEmailConfirmed = false
 		await this.userRepository.save(user)
 	}
@@ -95,13 +94,7 @@ export class UserController {
 
 	@Get('username')//get username
 	async get_user_name(@GetUser() user: any) {
-		//console.log(user)
-		// if (user.username) {
-		// //console.log(user)
 		return { username: user.username }
-		// }
-		// else
-		// 	return { username: undefined }
 	}
 
 	/////////////////////////
@@ -161,14 +154,14 @@ export class UserController {
 
 	@Get('avatar')	//get avatar
 	get_image(@GetUser() user: any, @Res() res) {
-		return (res.sendFile(join(process.cwd(), user.imagePath)))
+		res.sendFile(join(process.cwd(), user.imagePath))
 	}
 
 	@Get('avatarUser/:username')	//get avatar
 	async get_image_user(@GetUser() user: any, @Res() res, @Param() usernamedto: usernameDto) {
 		const us = await this.userRepository.findOneBy({ username: usernamedto.username })
 		if (us)
-			return (res.sendFile(join(process.cwd(), us.imagePath)))
+			res.sendFile(join(process.cwd(), us.imagePath))
 	}
 
 	@Get('all')
@@ -186,8 +179,8 @@ export class UserController {
 	////////////////////
 
 	@Get('stats')
-	async get_stats(@GetUser() user: any) {
-		return await this.userservice.get_stats(user.login)
+	async get_stats(@GetUser() user: any, usernamedto: usernameDto) {
+		return await this.userservice.get_stats(usernamedto.username)
 	}
 
 
@@ -195,5 +188,10 @@ export class UserController {
 	@Get(':username')
 	async get_user_by_username(@GetUser() user: any, @Param() usernamedto: usernameDto) {
 		return await this.userservice.get_user_by_username(usernamedto.username)
+	}
+
+	@Post('match')
+	add_to_history(@GetUser() user: any, matchdto: matchDto) {
+		this.userservice.add_to_history(user.username, matchdto)
 	}
 }

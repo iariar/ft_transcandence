@@ -19,7 +19,7 @@ import { ChatService } from 'src/chat/chat.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Convo, UserEntity, UserStats, matches, AVatar, Message]),
+    TypeOrmModule.forFeature([Convo, UserEntity, UserStats, matches, AVatar, Message, Match]),
     JwtModule.register({}),
     HttpModule,
     MailerModule.forRootAsync({
