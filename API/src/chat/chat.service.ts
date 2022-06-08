@@ -96,6 +96,9 @@ export class ChatService {
 			let index = loadedRoom.banned.findIndex(u => u.username === user.username)
 			if (index > -1)
 				return ({ status: 'user banned' })
+			index = loadedRoom.users.findIndex(u => u.username === user.username)
+			if (index > -1)
+				return ({ status: 'user already in the room' })
 			if (!loadedRoom.users)
 				loadedRoom.users = []
 			loadedRoom.users.push(user)

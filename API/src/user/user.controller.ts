@@ -64,7 +64,7 @@ export class UserController {
 			email: user.email,
 			emailConfirmed: user.isEmailConfirmed
 		}
-		// console.log(obj)
+		// console.log(obj) 
 		return (obj)
 	}
 
