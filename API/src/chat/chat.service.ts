@@ -110,13 +110,14 @@ export class ChatService {
 			return ({ status: 'end' })
 		}
 		catch (err) {
-			console.log(err)
+			console.log('Error: join room')
 			return ({ status: 'something went wrong / duplicating something' })
 		}
 	}
 
 	async leaveRoom(userName: string, room_description: string) {
 		try {
+
 			const user = await this.userRepository.findOne({
 				where: { username: userName }, relations: {
 					rooms: true
@@ -149,6 +150,7 @@ export class ChatService {
 
 			await this.convoRepository.save(loadedRoom)
 
+
 			// remove room from user rooms list
 			index = user.rooms.findIndex(room => room.description === loadedRoom.description)
 			if (index > -1)
@@ -157,7 +159,7 @@ export class ChatService {
 			return ({ status: true })
 		}
 		catch (err) {
-			// console.log(err)
+			console.log('Error leaveRoom')
 			return ({ status: false })
 		}
 
@@ -184,7 +186,7 @@ export class ChatService {
 			await this.convoRepository.save(loadedRoom)
 		}
 		catch (err) {
-			console.log(err)
+			console.log('Error pushMsg')
 			return ({ status: 'something went wrong / duplicating something' })
 		}
 	}
@@ -229,8 +231,9 @@ export class ChatService {
 	}
 
 	async roomUsers(descriptiondto: descriptionDto) {
-		let users: { user: string, muted: boolean }[] = []
+		let users: { user: string, muted: boolean, status: string }[] = []
 		let muted: boolean = false
+		let status: string = "user"
 
 		const room = await this.convoRepository.findOne({
 			where: {
@@ -238,16 +241,25 @@ export class ChatService {
 			},
 			relations: {
 				users: true,
-				muted: true
+				muted: true,
+				owner: true,
+				administrators: true
 			}
 		})
 		if (room) {
 			for (const k in room.users) {
+				status = "user"
 				muted = false
 				let index = room.muted.findIndex(u => u.username === room.users[k].username)
 				if (index > -1)
 					muted = true
-				users.push({ user: room.users[k].username, muted: muted })
+				index = room.administrators.findIndex(u => u.username === room.users[k].username)
+				if (index > -1)
+					status = "administrator"
+				index = room.owner.findIndex(u => u.username === room.users[k].username)
+				if (index > -1)
+					status = "owner"
+				users.push({ user: room.users[k].username, muted: muted, status: status })
 			}
 			// console.log(users)
 			return users
@@ -320,7 +332,7 @@ export class ChatService {
 			this.userRepository.save(friend)
 		}
 		catch (err) {
-			console.log(err)
+			console.log('Error creatDm')
 			return ({ status: 'something went wrong / duplicating something' })
 		}
 	}
@@ -390,7 +402,7 @@ export class ChatService {
 			await this.userRepository.save(user)
 		}
 		catch (err) {
-			console.log(err)
+			console.log('Error pushMsg')
 			return ({ status: 'something went wrong / duplicating something' })
 		}
 	}
@@ -478,7 +490,7 @@ export class ChatService {
 			return { status: true }
 		}
 		catch (err) {
-			console.log(err)
+			console.log('Error muteUser')
 			return ({ status: 'something went wrong / duplicating something' })
 		}
 	}
@@ -540,7 +552,7 @@ export class ChatService {
 			this.convoRepository.save(room)
 		}
 		catch (err) {
-			console.log(err)
+			console.log('Error add_administrator')
 			return ({ status: 'something went wrong / duplicating administrator' })
 		}
 	}

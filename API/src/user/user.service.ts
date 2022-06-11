@@ -218,8 +218,9 @@ export class UserService {
 					blocked: true
 				},
 			})
+
 			if (!friend)
-				return false
+				return { status: false }
 			const loadedUser = await this.userRepository.findOne({
 				where: {
 					login: login,
@@ -233,29 +234,32 @@ export class UserService {
 			if (loadedUser.blocked) {
 				index = loadedUser.blocked.findIndex(user => user.username === friend.username)
 				if (index !== -1)
-					return { status: false }
+					return { status: 'bloked' }
 			}
 			if (friend.blocked) {
 				index = friend.blocked.findIndex(user => user.username === loadedUser.username)
 				if (index !== -1)
-					return { status: false }
+					return { status: 'blocked 2' }
 			}
 			await this.chatservice.createDm(loadedUser.username, friend_username)
+			index = friend.friends.findIndex(user => user.username === loadedUser.username)
+			if (index !== -1)
+				return { status: 'already friends' }
 			if (friend.login !== loadedUser.login) {
 				await loadedUser.friends.push(friend)
 				await friend.friends.push(loadedUser)
 			}
 			else
-				return ({ status: false })
+				return ({ status: 'it is you' })
 			await this.userRepository.save(loadedUser)
 			await this.userRepository.save(friend)
 			return ({ status: true })
 		}
 		catch (err) {
-			console.log('friend already exists')
+			console.log(err)
 			return { status: false }
 		}
-		return true
+		// return true
 	}
 
 	async get_friends(Login: string) {
