@@ -74,6 +74,7 @@ export class ChatService {
 	async verify_password(passwordverificationdto: passwordVerificationDto) {   /// room_description => description
 		let verificarion: boolean = false;
 		const room = await this.convoRepository.findOneBy({ description: passwordverificationdto.description })
+
 		if (passwordverificationdto.password)
 			verificarion = await argon.verify(room.password, passwordverificationdto.password)
 		if (verificarion === true)
@@ -514,13 +515,26 @@ export class ChatService {
 	}
 
 	async set_new_password(room_description: string, new_pass: string) {
-		const room = await this.convoRepository.findOne({
-			where: {
-				description: room_description
+		try {
+			const room = await this.convoRepository.findOne({
+				where: {
+					description: room_description
+				}
+			})
+			if (new_pass === "") {
+				room.password = "";
 			}
-		})
-		room.password = await argon.hash(new_pass)
-		this.convoRepository.save(room)
+			else {
+				if (await argon.verify(room.password, new_pass))
+					return { status: "same" }
+				room.password = await argon.hash(new_pass)
+			}
+			this.convoRepository.save(room)
+			return ({ status: true })
+		}
+		catch {
+			return ({ status: false })
+		}
 	}
 
 	async remove_password(room_description: string) {
@@ -533,9 +547,8 @@ export class ChatService {
 		this.convoRepository.save(room)
 	}
 
-	async add_administrator(room_description: string, new_admin_username: string) {
+	async add_administrator(room_description: string, new_admin_username: string, set: boolean) {
 		try {
-
 			const room = await this.convoRepository.findOne({
 				where: {
 					description: room_description
@@ -545,15 +558,24 @@ export class ChatService {
 				}
 			})
 			const new_admin = await this.userRepository.findOneBy({ username: new_admin_username })
-			if (!room.administrators)
-				room.administrators = [new_admin]
-			else
-				room.administrators.push(new_admin)
+			if (set) {
+				if (!room.administrators)
+					room.administrators = [new_admin]
+				else
+					room.administrators.push(new_admin)
+			}
+			else {
+
+				let index = room.administrators.findIndex(user => user.username === new_admin_username)
+				if (index > -1)
+					room.administrators.splice(index, 1)
+			}
 			this.convoRepository.save(room)
+			return ({ status: true })
 		}
 		catch (err) {
 			console.log('Error add_administrator')
-			return ({ status: 'something went wrong / duplicating administrator' })
+			return ({ status: false })
 		}
 	}
 

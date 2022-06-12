@@ -8,6 +8,7 @@ import { chatOpDto } from 'src/chat/dto/chat_op.dto';
 import { roomCreationDto } from 'src/chat/dto/room_creation.dto';
 import { usernameDto } from 'src/user/dto/username.dto';
 import { ChatService } from './chat.service';
+import { setAdminDto } from './dto/set_admin.dto';
 
 
 @UseGuards(My_guard)
@@ -119,16 +120,22 @@ export class ChatController {
 		return this.chatservice.mute_user(chatopdto.description, chatopdto.username)
 	}
 
-	// @Post('unmute')
-	// unmute(@GetUser() user: any, @Body() chatopdto: chatOpDto) {
-	// 	console.log(chatopdto)
-	// 	return this.chatservice.unmute_user(chatopdto.description, chatopdto.username)
-	// }
-
 	@Post('kick')
 	kick(@GetUser() user: any, @Body() chatopdto: chatOpDto) {
 		console.log(chatopdto)
 		return this.chatservice.kick_user(chatopdto.username, chatopdto.description)
+	}
+
+	@Post('setPass')
+	set_pass(@GetUser() user: any, @Body() descriptiondto: passwordVerificationDto) {
+		console.log(descriptiondto)
+		return this.chatservice.set_new_password(descriptiondto.description, descriptiondto.password)
+	}
+
+	@Post('addAdmin')
+	add_administrator(@GetUser() user: any, @Body() setadmindto: setAdminDto) {
+		console.log(setadmindto)
+		return this.chatservice.add_administrator(setadmindto.description, setadmindto.username, setadmindto.set)
 	}
 
 }

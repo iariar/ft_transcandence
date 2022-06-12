@@ -122,7 +122,7 @@ export class UserController {
 		return await this.userservice.unblock_user(usernamedto.username, user.username)
 	}
 
-	@Get('blockedUsers')
+	@Get('blockedList')
 	async blocked(@GetUser() user: any) {
 		return await this.userservice.blocked_list(user.username)
 	}
