@@ -6,7 +6,7 @@ export class matchDto {
 	won: boolean;
 
 	@IsNotEmpty()
-	oppenent: string;
+	opponent: string;
 
 
 }

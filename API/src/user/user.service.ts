@@ -303,7 +303,8 @@ export class UserService {
 			relations: {
 				friends: true,
 				rooms: true,
-				blocked: true
+				blocked: true,
+				history: true
 			},
 		});
 	}
@@ -510,9 +511,13 @@ export class UserService {
 		// }
 		try {
 			let match = await this.matchRepository.create()
+			console.log(matchdto);
+			
 			match.won = matchdto.won;
-			match.oppenent = matchdto.oppenent
+			match.oppenent = matchdto.opponent
+			console.log('2');
 			match = await this.matchRepository.save(match)
+			console.log(username);
 			const user = await this.userRepository.findOne({
 				where: {
 					username: username,
@@ -521,12 +526,19 @@ export class UserService {
 					history: true
 				}
 			})
+			console.log('3');
 			if (!user.history)
 				user.history = []
+			console.log('3');
 			user.history.push(match)
+			this.userRepository.save(user)
+			console.log(user.history);
+			
 			return ({ stats: true })
 		}
-		catch {
+		catch(err) {
+			console.log('tfo')
+			console.log(err)
 			return ({ stats: false })
 		}
 	}

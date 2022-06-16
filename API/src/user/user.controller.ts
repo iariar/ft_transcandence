@@ -191,7 +191,8 @@ export class UserController {
 	}
 
 	@Post('match')
-	add_to_history(@GetUser() user: any, matchdto: matchDto) {
+	add_to_history(@GetUser() user: any, @Body() matchdto: matchDto) {
+		
 		this.userservice.add_to_history(user.username, matchdto)
 	}
 }

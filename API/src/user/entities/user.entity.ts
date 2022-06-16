@@ -51,6 +51,7 @@ export class UserEntity {
 
 
 	@ManyToMany(() => Match)
+	@JoinTable({ joinColumn: {} })
 	history: Match[]
 
 
