@@ -178,21 +178,21 @@ export class UserController {
 	////GET_STATS///////
 	////////////////////
 
-	@Get('stats')
-	async get_stats(@GetUser() user: any, usernamedto: usernameDto) {
+	@Post('stats')
+	async get_stats(@GetUser() user: any,@Body() usernamedto: usernameDto) {
 		return await this.userservice.get_stats(usernamedto.username)
 	}
 
 
 	////GET USER BY USERNAME
+	
+	@Post('match')
+	add_to_history(@GetUser() user: any, @Body() matchdto: matchDto) {
+		this.userservice.add_to_history(user.username, matchdto)
+	}
+
 	@Get(':username')
 	async get_user_by_username(@GetUser() user: any, @Param() usernamedto: usernameDto) {
 		return await this.userservice.get_user_by_username(usernamedto.username)
-	}
-
-	@Post('match')
-	add_to_history(@GetUser() user: any, @Body() matchdto: matchDto) {
-		
-		this.userservice.add_to_history(user.username, matchdto)
 	}
 }

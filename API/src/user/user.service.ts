@@ -485,11 +485,7 @@ export class UserService {
 	}
 
 	async get_stats(username: string) {
-		let ret: {
-			username: string,
-			image: any,
-			history: {}
-		}
+		let ret = {username: "", history: {}}
 		const user = await this.userRepository.findOne({
 			where: {
 				username: username
@@ -498,10 +494,12 @@ export class UserService {
 				history: true,
 			},
 		})
+		console.log(user)
 		ret.username = user.username
 		ret.history = user.history
-		ret.image = fs.readFileSync(join(process.cwd(), user.imagePath), { encoding: 'base64' })
-		return ({ stats: user.userstats })
+		// ret.image = fs.readFileSync(join(process.cwd(), user.imagePath), { encoding: 'base64' })
+		// return ({ stats: user.userstats })
+		return user.history
 	}
 
 	async add_to_history(username: string, matchdto: matchDto) {
@@ -531,8 +529,8 @@ export class UserService {
 				user.history = []
 			console.log('3');
 			user.history.push(match)
-			this.userRepository.save(user)
 			console.log(user.history);
+			this.userRepository.save(user)
 			
 			return ({ stats: true })
 		}
