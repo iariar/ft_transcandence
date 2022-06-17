@@ -85,7 +85,7 @@ export class UserService {
 		user.twoFaActivated = false
 		user.isEmailConfirmed = false
 		await this.userRepository.save(user)
-		console.log(user)
+		// console.log(user)
 		return (true)
 	}
 
@@ -444,7 +444,7 @@ export class UserService {
 				},
 				relations: { blocked: true }
 			})
-			console.log(user)
+			// console.log(user)
 			let index = user.blocked.findIndex(user => user.username === blocked_user.username)
 			if (index > -1)
 				user.blocked.splice(index, 1)
@@ -485,7 +485,9 @@ export class UserService {
 	}
 
 	async get_stats(username: string) {
-		let ret = {username: "", history: {}}
+		let ret = { username: "", history: {} }
+		let victories = 0;
+		let losses = 0;
 		const user = await this.userRepository.findOne({
 			where: {
 				username: username
@@ -494,12 +496,18 @@ export class UserService {
 				history: true,
 			},
 		})
-		console.log(user)
+		// console.log(user)
 		ret.username = user.username
 		ret.history = user.history
+		for (const i in user.history) {
+			if (user.history[i].won)
+				victories++
+			else
+				losses++
+		}
 		// ret.image = fs.readFileSync(join(process.cwd(), user.imagePath), { encoding: 'base64' })
 		// return ({ stats: user.userstats })
-		return user.history
+		return ({ history: user.history, wins: victories, losses: losses })
 	}
 
 	async add_to_history(username: string, matchdto: matchDto) {
@@ -509,13 +517,11 @@ export class UserService {
 		// }
 		try {
 			let match = await this.matchRepository.create()
-			console.log(matchdto);
-			
+			// console.log(username);
+
 			match.won = matchdto.won;
 			match.oppenent = matchdto.opponent
-			console.log('2');
 			match = await this.matchRepository.save(match)
-			console.log(username);
 			const user = await this.userRepository.findOne({
 				where: {
 					username: username,
@@ -524,17 +530,14 @@ export class UserService {
 					history: true
 				}
 			})
-			console.log('3');
 			if (!user.history)
 				user.history = []
-			console.log('3');
 			user.history.push(match)
-			console.log(user.history);
 			this.userRepository.save(user)
-			
+			// console.log(user.history)
 			return ({ stats: true })
 		}
-		catch(err) {
+		catch (err) {
 			console.log('tfo')
 			console.log(err)
 			return ({ stats: false })

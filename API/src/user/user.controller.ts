@@ -179,15 +179,16 @@ export class UserController {
 	////////////////////
 
 	@Post('stats')
-	async get_stats(@GetUser() user: any,@Body() usernamedto: usernameDto) {
+	async get_stats(@GetUser() user: any, @Body() usernamedto: usernameDto) {
 		return await this.userservice.get_stats(usernamedto.username)
 	}
 
 
-	////GET USER BY USERNAME
-	
+	////GET history BY USERNAME
+
 	@Post('match')
 	add_to_history(@GetUser() user: any, @Body() matchdto: matchDto) {
+		console.log(matchdto);
 		this.userservice.add_to_history(user.username, matchdto)
 	}
 

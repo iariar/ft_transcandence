@@ -94,6 +94,10 @@ export class ChatService {
 					banned: true
 				}
 			})
+			console.log(room_description)
+			if (!loadedRoom)
+				return ({ status: 'no such room' })
+			console.log(1)
 			let index = loadedRoom.banned.findIndex(u => u.username === user.username)
 			if (index > -1)
 				return ({ status: 'user banned' })

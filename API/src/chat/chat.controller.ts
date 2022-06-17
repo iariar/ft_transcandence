@@ -47,7 +47,6 @@ export class ChatController {
 
 	@Post('leaveRoom')
 	async leaveRoom(@Body() descriptiondto: descriptionDto, @GetUser() user: any) {
-		console.log(descriptiondto)
 		return await this.chatservice.leaveRoom(user.username, descriptiondto.description)
 	}
 
