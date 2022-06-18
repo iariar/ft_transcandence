@@ -170,6 +170,8 @@ export class UserService {
 			})
 			if (friend.login !== loadedUser.login) {
 				let index = loadedUser.friends.findIndex(friend => friend.username === friend.username)
+				console.log('>>>', loadedUser);
+
 				if (index > -1)
 					loadedUser.friends.splice(index, 1)
 				index = friend.friends.findIndex(user => user.username === loadedUser.username)
@@ -195,7 +197,9 @@ export class UserService {
 					}
 				})
 			}
-			await this.convoRepository.remove(room)
+			// console.log(loadedUser);
+			if (room)
+				await this.convoRepository.remove(room)
 			await this.userRepository.save(loadedUser)
 			await this.userRepository.save(friend)
 			return { status: true }
@@ -371,7 +375,7 @@ export class UserService {
 				"client_id": process.env.FORTYTWO_CLIENT_ID,
 				"client_secret": process.env.FORTYTWO_CLIENT_SECRET,
 				"code": code,
-				"redirect_uri": "http://localhost:4200/login"
+				"redirect_uri": "http://10.13.100.34:4200/login"
 			}).toPromise()
 			const token = data.data.access_token;
 			const info = await this.httpService.get('https://api.intra.42.fr/v2/me', {
@@ -409,8 +413,8 @@ export class UserService {
 		catch (error) {
 			ret.stats = false;
 			throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
-			console.log('error getting the user profile 1')
-			return ret
+			// console.log('error getting the user profile 1')
+			// return ret
 		}
 		// (ret.username === undefined || ret.username === null) ? ret.username = "": 0
 		return (ret)
@@ -456,18 +460,18 @@ export class UserService {
 		}
 	}
 
-	async get_user_by_username(userName: string) {
-		const user = await this.userRepository.findOne({
-			where: {
-				username: userName
-			}
-		})
-		if (user) {
-			const ret = { username: user.username/*stats and shit later*/ }
-			return ret
-		}
-		return {}
-	}
+	// async get_user_by_username(userName: string) {
+	// 	const user = await this.userRepository.findOne({
+	// 		where: {
+	// 			username: userName
+	// 		}
+	// 	})
+	// 	if (user) {
+	// 		const ret = { username: user.username/*stats and shit later*/ }
+	// 		return ret
+	// 	}
+	// 	return {}
+	// }
 
 	async GetUserData(Login: string) {
 		return (await this.userRepository.findOneBy({

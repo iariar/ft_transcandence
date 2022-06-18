@@ -12,6 +12,8 @@ import { appController } from './app.controller';
 import { Convo } from './chat/entities/conversation.entity';
 import { Message } from './chat/entities/message.entity';
 import { ChatModule } from './chat/chat.module';
+import { AppGateway } from './socket/socket.service';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), TypeOrmModule.forRoot({
@@ -23,8 +25,8 @@ import { ChatModule } from './chat/chat.module';
     database: 'db',
     entities: [UserEntity, UserStats, Match, AVatar, Convo, Message],
     synchronize: true,
-  }), UserModule, HttpModule, AuthModule, ChatModule],
+  }), UserModule, HttpModule, AuthModule, ChatModule, JwtModule.register({}),],
   // controllers: [appController],
-  // providers: [UserService],
+  providers: [AppGateway],
 })
 export class AppModule { }

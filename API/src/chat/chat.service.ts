@@ -152,8 +152,11 @@ export class ChatService {
 			if (index > -1)
 				loadedRoom.administrators.splice(index, 1)
 
-
-			await this.convoRepository.save(loadedRoom)
+			//remove room when last user left
+			if (loadedRoom.users.length === 0)
+				await this.convoRepository.remove(loadedRoom)
+			else
+				await this.convoRepository.save(loadedRoom)
 
 
 			// remove room from user rooms list

@@ -122,7 +122,7 @@ export class UserController {
 		return await this.userservice.unblock_user(usernamedto.username, user.username)
 	}
 
-	@Get('blockedList')
+	@Post('blockedList')
 	async blocked(@GetUser() user: any) {
 		return await this.userservice.blocked_list(user.username)
 	}
@@ -192,8 +192,8 @@ export class UserController {
 		this.userservice.add_to_history(user.username, matchdto)
 	}
 
-	@Get(':username')
-	async get_user_by_username(@GetUser() user: any, @Param() usernamedto: usernameDto) {
-		return await this.userservice.get_user_by_username(usernamedto.username)
-	}
+	// @Get(':username')
+	// async get_user_by_username(@GetUser() user: any, @Param() usernamedto: usernameDto) {
+	// 	return await this.userservice.get_user_by_username(usernamedto.username)
+	// }
 }
