@@ -19,41 +19,26 @@ import { ConfigService } from '@nestjs/config';
   },
 })
 export class AppGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
-  constructor(
-    private jwt: JwtService,
-    private configService: ConfigService,
-  ) { }
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
+  constructor(private jwt: JwtService, private configService: ConfigService) {}
   serverData: ServerData = new ServerData();
   n = 0;
+
+  // {'rel-hada': {name: 'reda', playingRoom: '', friend: []}}
 
   @WebSocketServer()
   server: Server;
 
   private logger: Logger = new Logger('AppGateway');
-  mutedUsers: any = {
-    // user: {
-    //   rooms: [],
-    // },
-  };
 
-  newState: any = {
-    // room1: {
-    //   muted: [],
-    // },
-  };
+  newState: any = {};
 
-  roomExists(payload: any) {
-    return this.mutedUsers[payload.username]?.rooms === undefined
-      ? []
-      : this.mutedUsers[payload.username]?.rooms;
-  }
-
-  userIsMuted(username: string, room: string) {
+  userIsMuted(login: string, room: string) {
     if (
       this.newState[room] &&
       this.newState[room].muted.length &&
-      this.newState[room].muted.includes(username)
+      this.newState[room].muted.includes(login)
     )
       return true;
     return false;
@@ -68,28 +53,29 @@ export class AppGateway
         client.join(payload.data.privateRooms[i].description);
     } else if (
       payload.command === 'sendMessageToServer' &&
-      !this.userIsMuted(payload.data.sender, payload.data.room)
+      !this.userIsMuted(payload.data.login, payload.data.room)
     ) {
-      console.log('send message :', payload);
-
       this.server.to(payload.data.room).emit('chat', {
-        // check if the user is muted, if not save his incoming message, if yes do not save !!!!!!
-        //db.query('inder.....').then(you can emit now).catch(DON'T EMIT)
         command: 'broadcastToRoom',
         data: {
           content: payload.data.content,
           sender: payload.data.sender,
           room: payload.data.room,
+          login: payload.data.login,
         },
       });
     } else if (payload.command === 'joinedRoom') {
+      client.join(payload.room);
       for (let u in payload.roomUsers) {
-        this.server.to(payload.roomUsers[u].user).emit('chat', {
+        this.server.to(payload.roomUsers[u].login).emit('chat', {
           command: 'joinedRoom',
           user: payload.user,
+          room: payload.room,
+          login: payload.login,
         });
       }
     } else if (payload.command === 'createRoom') {
+      client.join(payload.room);
       this.server.emit('chat', {
         command: 'createRoom',
         room: payload.room,
@@ -97,54 +83,57 @@ export class AppGateway
         hasPass: payload.hasPass,
       });
     } else if (payload.command === 'leaveRoom') {
+      // client.leave(payload.room);
       for (let u in payload.roomUsers) {
-        this.server.to(payload.roomUsers[u].user).emit('chat', {
+        this.server.to(payload.roomUsers[u].login).emit('chat', {
           command: 'leaveRoom',
-          user: payload.user,
+          login: payload.user,
           room: payload.room,
+          roomUsers: payload.roomUsers,
         });
       }
     } else if (payload.command === 'banned') {
+      // client.leave(payload.room);
       for (let u in payload.roomUsers) {
-        this.server.to(payload.roomUsers[u].user).emit('chat', {
+        this.server.to(payload.roomUsers[u].login).emit('chat', {
           command: 'banned',
-          user: payload.user,
+          login: payload.login,
           index: payload.index,
+          room: payload.room,
         });
       }
     } else if (payload.command === 'mute') {
-      // console.log('server payload :', payload);
       if (!this.newState[payload.room])
         this.newState[payload.room] = {
           muted: [],
         };
 
-      if (!this.newState[payload.room].muted.includes(payload.username)) {
-        this.newState[payload.room].muted.push(payload.username);
-        this.server.to(payload.username).emit('chat', {
+      if (!this.newState[payload.room].muted.includes(payload.login)) {
+        this.newState[payload.room].muted.push(payload.login);
+        this.server.to(payload.login).emit('chat', {
           command: 'mute',
           muted: true,
-          user: payload.username,
+          login: payload.login,
           room: payload.room,
         });
         setTimeout(() => {
-          this.newState[payload.room].muted.splice(payload.username, 1);
-          this.server.to(payload.username).emit('chat', {
+          this.newState[payload.room].muted.splice(payload.login, 1);
+          this.server.to(payload.login).emit('chat', {
             command: 'mute',
             muted: false,
-            user: payload.username,
+            login: payload.login,
             room: payload.room,
           });
-          console.log('room mchaaat :', this.newState);
         }, 300000);
-        console.log('muted users :', this.newState);
       }
     } else if (payload.command === 'kick') {
+      // client.leave(payload.room);
       for (let u in payload.roomUsers) {
-        this.server.to(payload.roomUsers[u].user).emit('chat', {
+        this.server.to(payload.roomUsers[u].login).emit('chat', {
           command: 'kick',
-          user: payload.user,
+          login: payload.user,
           room: payload.room,
+          roomUsers: payload.roomUsers,
         });
       }
     } else if (payload.command === 'changePassword') {
@@ -152,84 +141,92 @@ export class AppGateway
         command: 'changePassword',
         room: payload.room,
         state: payload.state,
+        hasPass: payload.hasPass,
       });
     } else if (payload.command === 'setAdmin') {
-      console.log('admin server', payload);
       this.server.emit('chat', {
         command: 'setAdmin',
         room: payload.room,
-        username: payload.username,
+        login: payload.login,
         action: payload.action,
       });
+    } else if (payload.command === 'unblockFriend') {
+      this.server.emit('chat', {
+        command: 'unblockFriend',
+        friend: payload.friend,
+      });
+    } else if (payload.command === 'deleteRoom') {
+      this.server.emit('chat', {
+        command: 'deleteRoom',
+        room: payload.room,
+        private: payload.private,
+      });
+    } else if (payload.command === 'closeOverlay') {
+      this.server.to(client.handshake.query.name).emit('overlay', {
+        command: 'closeOverlay',
+      });
     }
-    // this.server.to(payload.username).emit('chat', {
-    //   command: 'mute',
-    //   user: payload.username,
-    //   room: payload.room,
-    // });
   }
-  // if (payload.command === "privMsg") {
-  // 	this.server.to(payload.data.receiver).emit("chat", {
-  // 		// command: "broadcastToFriend",
-  // 		data: {
-  // 			content: payload.data.content,
-  // 			sender: payload.data.sender,
-  // 			receiver: payload.data.receiver,
-  // 		}
-  // 	})
-  // }
-  // client.broadcast.emit('msgToClient', payload);
 
   @SubscribeMessage('game')
   async handleGame(client: Socket, payload) {
     if (payload.command === 'invite') {
       let res = this.serverData.invite(payload.data[1]);
-      if (res !== undefined) {
+      if (res !== undefined && payload.data[0] !== payload.data[1]) {
         this.server.to(res).emit('fromGame', {
           command: 'invited',
-          data: this.serverData.getUser(payload.data[0]),
+          data: {
+            login: this.serverData.getUser(payload.data[0]),
+            uuid: client.handshake.query.uuid,
+          },
         });
       }
     } else if (payload.command === 'matchFound') {
       let p1, p2, p1Id, p2Id;
+      (p1 = payload.data.login), (p2 = payload.data.enemyLogin);
 
-      console.log('queued : ', payload.data);
-      (p1 = payload.data[0]), (p2 = payload.data[1]);
       p1Id = this.serverData.getKeyByValue(p1);
       p2Id = this.serverData.getKeyByValue(p2);
       if (p1Id === undefined || p2Id === undefined) return;
-
-      this.serverData.createRoom(p1, p2, p1 + '-' + p2);
-      this.server.to(p1).emit('fromGame', {
+      if (
+        this.serverData.getUserRoom(p1) !== '' ||
+        this.serverData.getUserRoom(p2) !== ''
+      ) {
+        if (payload.data.sentFrom === 'invite') {
+          this.server.to(client.handshake.query.name).emit('fromGame', {
+            command: 'alreadyInGame',
+          });
+        }
+        return;
+      }
+      this.serverData.createRoom(p1, p2, p1 + '_' + p2);
+      this.server.to(client.handshake.query.uuid).emit('fromGame', {
         command: 'startGame',
         data: {
           position: 0,
-          room: p1 + '-' + p2,
+          room: p1 + '_' + p2,
           enemyName: p2,
-          enemyID: p2,
-          ballDirect: this.serverData.getRoom(p1 + '-' + p2).getDirection(),
+          enemyID: payload.data.enemyId,
+          ballDirect: this.serverData.getRoom(p1 + '_' + p2).getDirection(),
         },
       });
-      this.server.to(p2).emit('fromGame', {
+      this.server.to(payload.data.enemyId).emit('fromGame', {
         command: 'startGame',
         data: {
           position: 1,
-          room: p1 + '-' + p2,
+          room: p1 + '_' + p2,
           enemyName: p1,
-          enemyID: p1,
-          ballDirect: this.serverData.getRoom(p1 + '-' + p2).getDirection(),
+          enemyID: client.handshake.query.uuid,
+          ballDirect: this.serverData.getRoom(p1 + '_' + p2).getDirection(),
         },
       });
-      // client.broadcast.emit("spectateRooms", {
-      //   command: "addRoom",
-      //   room: p1 + "-" + p2
-      // })
     } else if (payload.command === 'updateDirection') {
       this.server.to(payload.data.id).emit('fromGame', {
         command: 'updateDirect',
         position: payload.data.postition,
         direct: payload.data.direct,
       });
+      if (this.serverData.getRoom(payload.data.room) === undefined) return;
       let spect = this.serverData.getRoom(payload.data.room).getSpectators();
       for (let e in spect) {
         this.server.to(e).emit('fromGame', {
@@ -239,72 +236,61 @@ export class AppGateway
         });
       }
     } else if (payload.command === 'won') {
+      if (this.serverData.getRoom(payload.data.room) === undefined) return;
       this.serverData.getRoom(payload.data.room).setDirection();
       let newDirect = this.serverData.getRoom(payload.data.room).getDirection();
 
+      this.server.to(payload.data.id).emit('fromGame', {
+        command: 'won-newDirect',
+        data: { newDirect: newDirect },
+      });
       this.server
-        .to(payload.data.id)
-        .emit('fromGame', {
-          command: 'won-newDirect',
-          data: { newDirect: newDirect },
-        });
-      this.server
-        .to(payload.data.player)
+        .to(client.handshake.query.uuid)
         .emit('fromGame', { command: 'newDirect', data: newDirect });
       this.serverData
         .getRoom(payload.data.room)
         .setScore(payload.data.position);
+
       let spect = this.serverData.getRoom(payload.data.room).getSpectators();
       for (let e in spect) {
-        this.server
-          .to(e)
-          .emit('fromGame', {
-            command: 'won-newDirect',
-            data: { newDirect: newDirect, position: payload.data.position },
-          });
+        this.server.to(e).emit('fromGame', {
+          command: 'won-newDirect',
+          data: { newDirect: newDirect, position: payload.data.position },
+        });
       }
     } else if (payload.command === 'leftGame') {
-      console.log('left : ', payload);
-
       if (this.serverData.getRoom(payload.room) !== undefined) {
-        console.log('\n insidde \n', payload.room);
-
-        this.serverData
-          .getRoom(payload.room)
-          .setPlayersStatus(payload.position);
-        let positions = this.serverData.getRoom(payload.room).getPlayerStatus();
-        console.log('\n\n psitionnsns \n', positions, '\n\n');
-        if (positions.player0 === false && positions.player1 === false) {
-          this.serverData.deleteRoom(payload.room);
-          this.server.emit('spectateRooms', {
-            command: 'deleteRoom',
-            room: payload.room,
+        this.serverData.setPlayingRoom(client.handshake.query.uuid);
+        let spect = this.serverData.getRoom(payload.room).getSpectators();
+        for (let e in spect) {
+          this.server.to(e).emit('fromGame', {
+            command: 'notifySpectator',
           });
-        } else if (
-          (positions.player0 === false && positions.player1 === true) ||
-          (positions.player0 === true && positions.player1 === false)
-        ) {
-          console.log(
-            '\n\n sendinng left \n',
-            'enemy : ',
-            payload.enemy,
-            '\n\n',
-          );
-
-          if (payload.ended === false) {
-            this.server.to(payload.enemy).emit('fromGame', {
-              command: 'enemyLeft',
-              data: client.handshake.query.name,
-            });
-          }
         }
-      }
+        this.serverData.deleteRoom(payload.room);
+        this.server.emit('spectateRooms', {
+          command: 'deleteRoom',
+          room: payload.room,
+        });
+        if (payload.ended === false) {
+          this.server.to(payload.enemy).emit('fromGame', {
+            command: 'enemyLeft',
+            data: client.handshake.query.name,
+          });
+        }
+      } else this.serverData.setPlayingRoom(client.handshake.query.name);
     } else if (payload.command === 'spectate') {
       let userId = this.serverData.getKeyByValue(payload.data.name);
       if (userId !== undefined) {
         let room = this.serverData.getUserRoom(userId);
 
         if (this.serverData.getRoom(room) !== undefined) {
+          let tmp = room.split('_');
+          if (
+            client.handshake.query.name === tmp[0] ||
+            client.handshake.query.name === tmp[1]
+          )
+            return;
           this.serverData.getRoom(room).addSpectator({
             id: client.id,
             name: this.serverData.getUser(payload.data.specatorName),
@@ -321,14 +307,20 @@ export class AppGateway
         }
       }
     } else if (payload.command === 'spectateRoom') {
-      console.log('innnnnnnnnnn');
-
       if (this.serverData.getRoom(payload.room) !== undefined) {
+        let tmp = payload.room.split('_');
+        if (
+          client.handshake.query.name === tmp[0] ||
+          client.handshake.query.name === tmp[1]
+        )
+          return;
+
         this.serverData.getRoom(payload.room).addSpectator({
           id: client.id,
           name: this.serverData.getUser(client.handshake.query.name),
         });
-        this.server.to(client.handshake.query.name).emit('fromGame', {
+
+        this.server.to(client.handshake.query.uuid).emit('fromGame', {
           command: 'spectate',
           data: {
             position: 3,
@@ -340,26 +332,32 @@ export class AppGateway
       }
     } else if (payload.command === 'requestRooms') {
       let rooms = this.serverData.getRooms();
-      this.server.to(payload.sender).emit('spectateRooms', {
+      this.server.to(client.handshake.query.name).emit('spectateRooms', {
         command: 'getRooms',
         rooms: rooms,
       });
     } else if (payload.command === 'addToQ') {
-      console.log('\naaaaadddeded to  ', payload);
-      this.serverData.addToQ(payload.username);
+      this.serverData.addToQ(payload.username, client.handshake.query.uuid);
     } else if (payload.command === 'requestMatch') {
-      console.log('request: ', payload);
       let enemy = this.serverData.queueTwoPlayers(payload.username);
-      console.log('enemy: ', enemy);
       if (enemy !== false) {
-        console.log('goooooooooooood ');
-        this.server.to(payload.username).emit('fromGame', {
+        this.server.to(client.handshake.query.uuid).emit('fromGame', {
           command: 'QFound',
-          enemy: enemy,
+          enemyLogin: enemy.login,
+          enemyId: enemy.uuid,
         });
-        this.server.to(enemy).emit('fromGame', {
+        this.server.to(enemy.uuid).emit('fromGame', {
           command: 'QFound-start-match',
-          enemy: payload.username,
+          enemyLogin: payload.username,
+          enemyId: client.handshake.query.uuid,
+        });
+        this.serverData.deleteFromQ(payload.username);
+        this.serverData.deleteFromQ(enemy.login);
+        this.server.to(enemy.login).emit('fromGame', {
+          command: 'resetQueueBtns',
+        });
+        this.server.to(client.handshake.query.name).emit('fromGame', {
+          command: 'resetQueueBtns',
         });
       }
     } else if (payload.command === 'deletefromQ') {
@@ -369,13 +367,11 @@ export class AppGateway
 
   @SubscribeMessage('paddle')
   handlePaddle(client: Socket, payload: any): void {
-    console.log('payloooaad : -> ', payload);
     if (this.serverData.getRoom(payload.room) === undefined) return;
     this.serverData
       .getRoom(payload.room)
       .setPaddle(payload.position, payload.move);
     let spect = this.serverData.getRoom(payload.room).getSpectators();
-    // console.log("speeect : -> ", spect);
     client.to(payload.id).emit('sendToPlayer', {
       position: -1,
       move: payload.move,
@@ -396,7 +392,6 @@ export class AppGateway
   handleAuth(client: Socket, payload: any): void {
     if (payload === 'disconnect') {
       client.disconnect();
-      // this.serverData.deleteUser(client.id);
     }
   }
 
@@ -405,114 +400,181 @@ export class AppGateway
     if (payload.command === 'checkFriend') {
       for (let i in payload.friends) {
         if (
-          this.serverData.checkOnline(payload.friends[i].name) !== undefined
+          this.serverData.checkOnline(payload.friends[i].login) !== undefined
         ) {
-          this.server.to(payload.friends[i].name).emit('friends', {
+          this.server.to(payload.friends[i].login).emit('friends', {
             command: 'online',
-            friendName: payload.sender,
+            friendName: client.handshake.query.name,
           });
           payload.friends[i].status = 1;
         }
       }
-      this.serverData.setFriends(payload.sender, payload.friends);
-      this.server.to(payload.sender).emit('friends', {
+      this.serverData.setFriends(client.handshake.query.name, payload.friends);
+      this.server.to(client.handshake.query.name).emit('friends', {
         command: 'updatedFriends',
         friends: payload.friends,
       });
     } else if (payload.command === 'ingame') {
-      let user = this.serverData.checkOnline(payload.sender);
+      let user = this.serverData.checkOnline(client.handshake.query.name);
       if (user !== undefined) {
         let friends = user.friends;
         for (let i in friends) {
-          if (this.serverData.checkOnline(friends[i].name) !== undefined) {
-            this.server.to(friends[i].name).emit('friends', {
+          if (this.serverData.checkOnline(friends[i].login) !== undefined) {
+            this.server.to(friends[i].login).emit('friends', {
               command: 'ingame',
-              friendName: payload.sender,
+              friendName: client.handshake.query.name,
             });
           }
         }
       }
     } else if (payload.command === 'addFriend') {
-      this.server.to(payload.friend).emit('friends', {
-        command: 'receiveAdded',
-        friend: client.handshake.query.name,
-        status: 1,
-      });
       let tmp = 0;
-      if (this.serverData.checkOnline(payload.friend) !== undefined) tmp = 1;
+      if (this.serverData.checkOnline(payload.friendLogin) !== undefined)
+        tmp = 1;
       this.server.to(client.handshake.query.name).emit('friends', {
         command: 'receiveAdded',
         friend: payload.friend,
+        login: payload.friendLogin,
         status: tmp,
       });
-      this.serverData.addFriend(client.handshake.query.name, payload.friend);
-      this.serverData.addFriend(payload.friend, client.handshake.query.name);
+      this.server
+        .to(payload.friendLogin)
+        .to(client.handshake.query.name)
+        .emit('chat', {
+          command: 'receiveAdded',
+          adderLogin: client.handshake.query.name,
+          adderName: payload.adderName,
+          friend: payload.friend,
+          login: payload.friendLogin,
+        });
+      this.serverData.addFriend(
+        client.handshake.query.name,
+        payload.friend,
+        payload.friendLogin,
+        tmp,
+      );
+      if (tmp === 0) return;
+
+      this.server.to(payload.friendLogin).emit('friends', {
+        command: 'receiveAdded',
+        friend: payload.adderName,
+        login: client.handshake.query.name,
+        status: 1,
+      });
+      this.serverData.addFriend(
+        payload.friendLogin,
+        payload.adderName,
+        client.handshake.query.name,
+        1,
+      );
     } else if (payload.command === 'removeFriend') {
       this.server.to(payload.friend).emit('friends', {
         command: 'removeFriend',
         friend: client.handshake.query.name,
       });
+      this.server
+        .to(payload.friend)
+        .to(client.handshake.query.name)
+        .emit('chat', {
+          command: 'removeFriend',
+          friend: payload.friend,
+          friendUsername: payload.friendUsername,
+          username: payload.username,
+          removing: client.handshake.query.name,
+        });
+    } else if (payload.command === 'blockFriend') {
+      this.server.to(payload.friend).emit('friends', {
+        command: 'removeFriend',
+        friend: client.handshake.query.name,
+      });
+      this.server
+        .to(client.handshake.query.name)
+        .to(payload.friend)
+        .emit('chat', {
+          command: 'blockFriend',
+          friend: payload.friend,
+          friendUsername: payload.friendUsername,
+          login: payload.login,
+          blocker: client.handshake.query.name,
+          username: payload.username,
+        });
+    } else if (payload.command === 'updateUsername') {
+      this.serverData.updateOnlineList(payload.username, payload.newUsername);
+      this.server.emit('friends', {
+        command: 'updateUsername',
+        username: payload.username,
+        newUsername: payload.newUsername,
+      });
+      this.server.emit('chat', {
+        command: 'updateUsername',
+        username: payload.username,
+        newUsername: payload.newUsername,
+      });
     }
   }
 
   handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
     let user = this.serverData.checkOnline(client.handshake.query.name);
     if (user === undefined) {
       this.serverData.deleteUser(client.handshake.query.name);
       return;
     }
     let friends = user.friends;
+
+    if (user.playingRoom !== '') {
+      if (this.serverData.getRoom(user.playingRoom) !== undefined) {
+        let tmp = user.playingRoom.split('_');
+        let enemy = tmp[0] === client.handshake.query.name ? tmp[1] : tmp[0];
+
+        this.server.emit('spectateRooms', {
+          command: 'deleteRoom',
+          room: user.playingRoom,
+        });
+
+        let spect = this.serverData.getRoom(user.playingRoom).getSpectators();
+        for (let e in spect) {
+          this.server.to(e).emit('fromGame', {
+            command: 'notifySpectator',
+          });
+        }
+        this.serverData.deleteRoom(user.playingRoom);
+
+        this.server.to(enemy).emit('fromGame', {
+          command: 'enemyLeft',
+          data: client.handshake.query.name,
+        });
+        // }
+        this.serverData.setPlayingRoom(client.handshake.query.name);
+      } else this.serverData.setPlayingRoom(client.handshake.query.name);
+      // }
+    }
     for (let i in friends) {
-      if (this.serverData.checkOnline(friends[i].name) !== undefined) {
-        this.server.to(friends[i].name).emit('friends', {
+      if (this.serverData.checkOnline(friends[i].login) !== undefined) {
+        this.server.to(friends[i].login).emit('friends', {
           command: 'offline',
           friendName: client.handshake.query.name,
         });
       }
     }
     this.serverData.deleteUser(client.handshake.query.name);
+    client.disconnect();
   }
-  // client.handshake.query.name
   async handleConnection(client: Socket, ...args: any[]) {
     let userId = this.serverData.getKeyByValue(client.handshake.query.name);
-
-    // check token
-    let token: string = client.handshake.query.token as string
+    let token: string = client.handshake.query.token as string;
     try {
       const payload = await this.jwt.verify(token, {
         secret: this.configService.get('JWT_SECRET'),
       });
-    }
-    catch {
-      console.log('unvalid token')
+    } catch {
       client.disconnect();
       return;
     }
-
-    // console.log(payload)
-    // if (typeof payload === 'object' && 'login' in payload) {
-    //   console.log(payload.login)
-    // return payload.login;
-    // }
-    // else {
-    //   client.disconnect();
-    // }
-    // client.handshake.query.token
-
-
     client.join(client.handshake.query.name);
-
-    console.log(
-      `Client ${client.handshake.query.name} connected: ${client.id}`,
-    );
+    client.join(client.handshake.query.uuid);
     if (userId !== undefined) {
-      console.log('this user already here : ');
       this.serverData.deleteUser(userId);
     }
-    this.serverData.setUser(
-      client.handshake.query.name,
-      client.handshake.query.name,
-    );
+    this.serverData.setUser(client.handshake.query.name);
   }
 }

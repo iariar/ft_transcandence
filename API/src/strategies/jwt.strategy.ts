@@ -17,7 +17,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-			// ignoreExpiration: true,
 			secretOrKey: config.get('JWT_SECRET')
 		})
 	}
@@ -25,8 +24,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 	async validate(payload: { login: string }) {
 		const login = payload.login
 		const user = await this.userRepository.findOneBy({ login })
-		// console.log(user)
-
 		return user
 	}
 

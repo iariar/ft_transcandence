@@ -1,4 +1,4 @@
-import { GameRoom } from "./rooms";
+import { GameRoom } from './rooms';
 
 export class ServerData {
   private _online: object;
@@ -8,7 +8,7 @@ export class ServerData {
   constructor() {
     this._online = {};
     this._rooms = {};
-    this._queue = [];
+    this._queue = {};
   }
 
   public getRoom(id: any) {
@@ -23,34 +23,32 @@ export class ServerData {
     return this._queue;
   }
 
-  addToQ(name: string) {
-    this._queue.push(name);
+  addToQ(name: any, uuid: any) {
+    this._queue = { ...this._queue, [name]: uuid };
   }
 
   randomIntFromInterval(min, max): number {
-    return Math.floor(Math.random() * (max - min + 1) + min)
+    return Math.floor(Math.random() * (max - min + 1) + min);
   }
 
   queueTwoPlayers(requester) {
-    console.log("requested id in queue ======>  ", this._queue);
-    if (this._queue.length === 1)
-      return false;
-    let requesterInd = this._queue.indexOf(requester);
-    if (requesterInd === -1)
+    let size = Object.keys(this._queue).length;
+    if (
+      size === 1 ||
+      (this.checkOnline(requester) &&
+        this.checkOnline(requester).playingRoom !== '')
+    )
       return false;
 
-    let tmp = this._queue.slice(0);
-    tmp.splice(requesterInd, 1);
-    let random: number = this.randomIntFromInterval(0, tmp.length - 1);
-    console.log("random: ", ~~random, "list: ", tmp, " list l: ", tmp.length);
-    return tmp[~~random];
+    for (let e in this._queue) {
+      if (e != requester && this.checkOnline(e).playingRoom === '')
+        return { login: e, uuid: this._queue[e] };
+    }
+    return false;
   }
 
   deleteFromQ(name: string) {
-    const index = this._queue.indexOf(name);
-    if (index > -1) {
-      this._queue.splice(index, 1);
-    }
+    delete this._queue[name];
   }
 
   public getOnline() {
@@ -61,39 +59,45 @@ export class ServerData {
     return this._rooms[room];
   }
 
-  public setUser(client, clientId: any) {
-    console.log(client, clientId);
+  public setUser(clientId: any) {
     let tmp = {
-      name: client,
-      playingRoom: "",
-      friends: []
-    }
+      name: clientId,
+      playingRoom: '',
+      friends: [],
+    };
     this._online = { ...this._online, [clientId]: tmp };
-    console.log("--> ", this._online);
-
   }
 
   setFriends(id: any, friends: any) {
     this._online[id] = {
       ...this._online[id],
-      friends: friends
-    }
+      friends: friends,
+    };
   }
 
-  addFriend(id: any, name: any) {
-    let tmp = this._online[id].friends;
-    tmp.push({
-      name: name,
-      status: 1
-    });
-    this._online[id] = {
-      ...this._online[id],
-      friends: tmp
+  addFriend(id: any, name: any, login: any, status: number) {
+    if (this._online[id]) {
+      let tmp = this._online[id].friends;
+      tmp.push({
+        name: name,
+        login: login,
+        status: status,
+      });
+      this._online[id] = {
+        ...this._online[id],
+        friends: tmp,
+      };
     }
   }
 
   public getKeyByValue(value: any) {
-    return Object.keys(this._online).find(key => this._online[key].name === value);
+    return Object.keys(this._online).find(
+      (key) => this._online[key].name === value,
+    );
+  }
+
+  public keyQueue(object: any, value: any) {
+    return Object.keys(object).find((key) => object[key].uuid === value);
   }
 
   public getUser(id: any) {
@@ -111,37 +115,54 @@ export class ServerData {
   public deleteUser(id) {
     delete this._online[id];
     this.deleteFromQ(id);
-    console.log("after delete ", this._online);
   }
 
   public createRoom(player1: any, player2: any, room: any) {
     this._online[this.getKeyByValue(player1)].playingRoom = room;
     this._online[this.getKeyByValue(player2)].playingRoom = room;
-    if (this.getKeyByValue(player1) != undefined && this.getKeyByValue(player2) != undefined) {
+    if (
+      this.getKeyByValue(player1) != undefined &&
+      this.getKeyByValue(player2) != undefined
+    ) {
       let p1 = {
         id: this.getKeyByValue(player1),
-        name: player1
-      }
+        name: player1,
+      };
       let p2 = {
         id: this.getKeyByValue(player2),
-        name: player2
-      }
-      // console.log(p1, p2)
-      this._rooms = { ...this._rooms, [room]: new GameRoom() }
+        name: player2,
+      };
+      this._rooms = { ...this._rooms, [room]: new GameRoom() };
       this._rooms[room].setPlayers(p1, p2);
       this._rooms[room].setDirection();
     }
-    console.log(this._rooms);
   }
 
   public deleteRoom(room: any) {
-    for (let e in this._rooms[room].getPlayers()) {
-      this._online[e].playingRoom = "";
-    }
     delete this._rooms[room];
   }
 
   public invite(name: string) {
     return this.getKeyByValue(name);
+  }
+
+  public setPlayingRoom(user: any) {
+    if (this._online[user] !== undefined) this._online[user].playingRoom = '';
+  }
+
+  public updateOnlineList(username: string, newUsername: string) {
+    let user = this.checkOnline(username);
+
+    if (user) {
+      delete this._online[username];
+      this._online = {
+        ...this._online,
+        [newUsername]: {
+          name: newUsername,
+          playingRoom: '',
+          friends: user.friends,
+        },
+      };
+    }
   }
 }

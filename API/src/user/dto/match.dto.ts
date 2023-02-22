@@ -1,12 +1,11 @@
-import { IsNotEmpty } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsString } from 'class-validator';
 
 export class matchDto {
+  @IsNotEmpty()
+  @IsBoolean()
+  won: boolean;
 
-	@IsNotEmpty()
-	won: boolean;
-
-	@IsNotEmpty()
-	opponent: string;
-
-
+  @IsNotEmpty()
+  @IsString()
+  opponent: string;
 }

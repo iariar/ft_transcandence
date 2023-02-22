@@ -1,11 +1,10 @@
-import { IsNotEmpty, IsString } from "class-validator"
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class passwordVerificationDto {
-	@IsString()
-	@IsNotEmpty()
-	description: string
+  @IsString()
+  @IsNotEmpty()
+  description: string;
 
-	@IsString()
-	// @IsNotEmpty()
-	password: string
+  @IsString()
+  password: string;
 }
